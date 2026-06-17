@@ -2,7 +2,7 @@
  * scanner.js (長府デジタルスタンプラリー用・修正版)
  */
 
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb';
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/aajx7c9rxilbjpeak72iqbj6l9e9lct3';
 const VALID_QR_CODES = ["A01", "A02", "A03", "A04", "S05", "S06", "S07"];
 
 let html5QrcodeScannerInstance = null;
