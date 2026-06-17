@@ -1,67 +1,62 @@
 /**
- * scanner.js (長府デジタルスタンプラリー用・確定版)
+ * scanner.js (長府デジタルスタンプラリー用・デバッグ機能付き)
  */
 
-// ★Makeで発行したWebhook URLに書き換えてください
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb';
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb'; // 新しいURL
 
-// ★7箇所のスポットID
-const VALID_QR_CODES = [
-    "A01", "A02", "A03", "A04", 
-    "S05", "S06", "S07"
-];
+const VALID_QR_CODES = ["A01", "A02", "A03", "A04", "S05", "S06", "S07"];
 
 let html5QrcodeScannerInstance = null;
 let isProcessingScan = false;
+
+// 画面にログを表示する関数
+function debugLog(message, isError = false) {
+    const logEl = document.getElementById('qr-reader-results');
+    if (logEl) {
+        logEl.style.display = 'block';
+        logEl.style.color = isError ? 'red' : 'black';
+        logEl.innerText = `[DEBUG]: ${message}`;
+        console.log(`[DEBUG]: ${message}`);
+    }
+}
 
 function getQueryParam(name) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
 }
 
-function updateResultsDisplay(message, type = 'info') {
-    const resultsEl = document.getElementById('qr-reader-results');
-    if (resultsEl) {
-        resultsEl.innerText = message;
-        resultsEl.className = 'qr-reader-results ' + type;
-        resultsEl.style.display = 'flex';
-    }
-}
-
 async function onScanSuccess(decodedText, decodedResult) {
     if (isProcessingScan) return;
     isProcessingScan = true;
     
-    updateResultsDisplay(`QRコード認識中...`, 'info');
+    debugLog(`認識成功: ${decodedText}`);
 
-    // スキャナーを停止
     if (html5QrcodeScannerInstance) {
         await html5QrcodeScannerInstance.clear();
     }
 
-    // 有効QR判定
     if (!VALID_QR_CODES.includes(decodedText)) {
-        const invalidQrMsg = `このQRコードは対象外です。`;
-        updateResultsDisplay(invalidQrMsg, 'warning');
-        alert(invalidQrMsg);
+        debugLog(`対象外QR: ${decodedText}`, true);
+        alert(`このQRコードは対象外です。`);
         isProcessingScan = false;
         return;
     }
 
     const userEmail = getQueryParam('email');
-
     if (!userEmail) {
-        alert("エラー: 参加者情報（メール）が取得できません。ページを更新してください。");
+        debugLog(`メールアドレス取得失敗`, true);
+        alert("エラー: 参加者情報が取得できません。");
         isProcessingScan = false;
         return;
     }
 
-    // データ送信
     const dataToSend = {
         email: userEmail,
         spot_id: decodedText,
         scanned_at: new Date().toISOString()
     };
+
+    debugLog(`送信中...`);
 
     try {
         const response = await fetch(MAKE_WEBHOOK_URL, {
@@ -70,46 +65,34 @@ async function onScanSuccess(decodedText, decodedResult) {
             body: JSON.stringify(dataToSend)
         });
 
+        const result = await response.text();
+        debugLog(`サーバー応答: ${response.status} - ${result}`);
+
         if (response.ok) {
-            updateResultsDisplay(`スポット「${decodedText}」を記録しました！`, 'success');
             alert(`スタンプを獲得しました！`);
         } else {
-            throw new Error(`Server returned ${response.status}`);
+            alert(`サーバーエラー: ${response.status}`);
         }
     } catch (error) {
-        console.error('Webhook送信エラー:', error);
-        updateResultsDisplay('記録に失敗しました。', 'error');
-        alert('通信エラーが発生しました。再度お試しください。');
+        debugLog(`通信エラー: ${error.message}`, true);
+        alert('通信エラーが発生しました。');
+    } finally {
         isProcessingScan = false;
     }
 }
 
-function onScanFailure(error) {
-    // 頻繁なエラーログを抑止
-}
+function onScanFailure(error) {}
 
 document.addEventListener('DOMContentLoaded', () => {
-    const userEmail = getQueryParam('email');
-    if (!userEmail) {
-        updateResultsDisplay('エラー: メールアドレスがURLに含まれていません。', 'error');
-        return;
-    }
-
     try {
-        // 設定を簡素化してAndroidのカメラ競合を回避
         html5QrcodeScannerInstance = new Html5QrcodeScanner(
             "qr-reader",
-            { 
-                fps: 10, 
-                qrbox: 250, 
-                aspectRatio: 1.0,
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] 
-            },
+            { fps: 10, qrbox: 250, aspectRatio: 1.0, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
             false
         );
         html5QrcodeScannerInstance.render(onScanSuccess, onScanFailure);
-        updateResultsDisplay('QRコードをかざしてください', 'info');
+        debugLog('スキャナー準備完了。QRをかざしてください。');
     } catch (e) {
-        updateResultsDisplay('カメラ起動エラー: カメラ権限を確認してください', 'error');
+        debugLog('スキャナー初期化エラー: ' + e.message, true);
     }
 });
