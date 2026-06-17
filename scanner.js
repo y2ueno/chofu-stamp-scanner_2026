@@ -3,7 +3,7 @@
  */
 
 // ★Makeで発行したWebhook URLに書き換えてください
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/058kwaoykob9k5upnh3vlojcq68y4er8';
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb';
 
 // ★7箇所のスポットID
 const VALID_QR_CODES = [
