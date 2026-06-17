@@ -1,22 +1,19 @@
 /**
- * scanner.js (長府デジタルスタンプラリー用・デバッグ機能付き)
+ * scanner.js (長府デジタルスタンプラリー用・修正版)
  */
 
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb'; // 新しいURL
-
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb';
 const VALID_QR_CODES = ["A01", "A02", "A03", "A04", "S05", "S06", "S07"];
 
 let html5QrcodeScannerInstance = null;
 let isProcessingScan = false;
 
-// 画面にログを表示する関数
 function debugLog(message, isError = false) {
     const logEl = document.getElementById('qr-reader-results');
     if (logEl) {
         logEl.style.display = 'block';
         logEl.style.color = isError ? 'red' : 'black';
         logEl.innerText = `[DEBUG]: ${message}`;
-        console.log(`[DEBUG]: ${message}`);
     }
 }
 
@@ -50,19 +47,18 @@ async function onScanSuccess(decodedText, decodedResult) {
         return;
     }
 
-    const dataToSend = {
-        email: userEmail,
-        spot_id: decodedText,
-        scanned_at: new Date().toISOString()
-    };
-
     debugLog(`送信中...`);
 
     try {
-        const response = await fetch(MAKE_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dataToSend)
+        // 【修正ポイント】POST/JSONではなく、GETパラメータ方式で送信
+        const params = new URLSearchParams({
+            email: userEmail,
+            spot_id: decodedText,
+            scanned_at: new Date().toISOString()
+        });
+        
+        const response = await fetch(`${MAKE_WEBHOOK_URL}?${params.toString()}`, {
+            method: 'GET' 
         });
 
         const result = await response.text();
