@@ -17,7 +17,6 @@
     <div id="msg">カメラを起動中...</div>
 
     <script>
-        // 【送信先】完全に検証済みのMake Webhook URL
         const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb";
         
         const video = document.getElementById("video");
@@ -25,7 +24,6 @@
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         
-        // 【修正】Glideの設定に合わせて「email」パラメータから取得するよう統一
         const userEmail = new URLSearchParams(window.location.search).get("email");
         let isScanning = true;
 
@@ -52,7 +50,6 @@
             msg.innerText = "スタンプ送信中...";
             
             try {
-                // 最も確実なGETパラメータ方式でMakeにデータを直接送信
                 const params = new URLSearchParams({
                     email: userEmail,
                     spot_id: spotId,
@@ -65,7 +62,6 @@
 
                 if (response.ok) {
                     msg.innerText = "✅ スタンプ獲得！";
-                    // Glide側へのメッセージ通知
                     window.parent.postMessage({ type: 'QR_SCANNED', spot_id: spotId }, '*');
                 } else {
                     msg.innerText = `❌ サーバーエラー: ${response.status}`;
