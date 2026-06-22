@@ -17,17 +17,16 @@
     <div id="msg">カメラを起動中...</div>
 
     <script>
-        // Supabase設定 (Project ID: vgwjykplfakpabdunoxi)
-        const SUPABASE_URL = "https://vgwjykplfakpabdunoxi.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_W-TPeQVE3YyPnHMiUVfHew_djQSBC9Y";
+        // 【送信先】完全に検証済みのMake Webhook URL
+        const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/c9u4w66v38wvwvlrohkotbowgixce8kb";
         
         const video = document.getElementById("video");
         const msg = document.getElementById("msg");
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         
-        // GlideからURLパラメータ ?uid=ユーザーID を取得
-        const myUserId = new URLSearchParams(window.location.search).get("uid") || "guest";
+        // 【修正】Glideの設定に合わせて「email」パラメータから取得するよう統一
+        const userEmail = new URLSearchParams(window.location.search).get("email");
         let isScanning = true;
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -45,37 +44,36 @@
         }
 
         async function sendData(spotId) {
-            msg.innerText = "照合中...";
-            
-            // 1. 重複チェック
-            const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/stamps?user_id=eq.${encodeURIComponent(myUserId)}&spot_id=eq.${encodeURIComponent(spotId)}`, {
-                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-            });
-            const existing = await checkRes.json();
-
-            if (existing && existing.length > 0) {
-                msg.innerText = "⚠️ すでに取得済みです";
-                setTimeout(() => { isScanning = true; }, 3000);
+            if (!userEmail) {
+                msg.innerText = "❌ エラー: 参加者情報(email)が取得できません";
                 return;
             }
 
-            // 2. スタンプ登録
-            const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/stamps`, {
-                method: "POST",
-                headers: {
-                    "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY,
-                    "Content-Type": "application/json", "Prefer": "return=minimal"
-                },
-                body: JSON.stringify({ user_id: myUserId, spot_id: spotId })
-            });
+            msg.innerText = "スタンプ送信中...";
+            
+            try {
+                // 最も確実なGETパラメータ方式でMakeにデータを直接送信
+                const params = new URLSearchParams({
+                    email: userEmail,
+                    spot_id: spotId,
+                    scanned_at: new Date().toISOString()
+                });
 
-            if (insertRes.ok) {
-                msg.innerText = "✅ スタンプ獲得！";
-                // Glide側へメッセージ送信
-                window.parent.postMessage({ type: 'QR_SCANNED', spot_id: spotId }, '*');
-            } else {
-                msg.innerText = "登録失敗しました。再試行してください。";
-                setTimeout(() => { isScanning = true; }, 3000);
+                const response = await fetch(`${MAKE_WEBHOOK_URL}?${params.toString()}`, {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    msg.innerText = "✅ スタンプ獲得！";
+                    // Glide側へのメッセージ通知
+                    window.parent.postMessage({ type: 'QR_SCANNED', spot_id: spotId }, '*');
+                } else {
+                    msg.innerText = `❌ サーバーエラー: ${response.status}`;
+                    setTimeout(() => { isScanning = true; msg.innerText = "QRコードをかざしてください"; }, 3000);
+                }
+            } catch (error) {
+                msg.innerText = "❌ 通信エラーが発生しました";
+                setTimeout(() => { isScanning = true; msg.innerText = "QRコードをかざしてください"; }, 3000);
             }
         }
     </script>
