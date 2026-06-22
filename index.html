@@ -61,9 +61,15 @@
                 });
 
                 if (response.ok) {
+                    // 新規獲得に成功した場合
                     msg.innerText = "✅ スタンプ獲得！";
                     window.parent.postMessage({ type: 'QR_SCANNED', spot_id: spotId }, '*');
+                } else if (response.status === 409) {
+                    // 【重要】Makeから「重複エラー(409)」が返ってきた場合
+                    msg.innerText = "⚠️ このスタンプはすでに取得済みです";
+                    setTimeout(() => { isScanning = true; msg.innerText = "QRコードをかざしてください"; }, 4000);
                 } else {
+                    // その他の本当のサーバーエラーの場合
                     msg.innerText = `❌ サーバーエラー: ${response.status}`;
                     setTimeout(() => { isScanning = true; msg.innerText = "QRコードをかざしてください"; }, 3000);
                 }
